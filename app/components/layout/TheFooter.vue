@@ -11,8 +11,12 @@ const pages = [
 </script>
 
 <template>
-  <footer class="border-t-2 border-paper/15 py-10">
-    <div class="container-content flex flex-col gap-8">
+  <footer class="border-t-2 border-paper/15">
+    <ClientOnly>
+      <FooterPhysics />
+    </ClientOnly>
+
+    <div class="container-content flex flex-col gap-8 py-10">
       <nav class="flex flex-wrap gap-x-6 gap-y-2 text-sm font-bold uppercase tracking-wide">
         <NuxtLink v-for="page in pages" :key="page.to" :to="page.to" class="text-paper/60 hover:text-paper">
           {{ page.label }}
