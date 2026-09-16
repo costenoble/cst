@@ -1,0 +1,123 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    @apply scroll-smooth;
+  }
+
+  body {
+    @apply bg-ink text-paper font-sans antialiased;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-display;
+  }
+
+  ::selection {
+    @apply bg-accent-lime text-ink;
+  }
+}
+
+@layer components {
+  /* Section "jour" claire, alternée avec les sections sombres */
+  .section-paper {
+    @apply bg-paper text-ink;
+  }
+
+  /*
+   * Style "poster brutaliste" : bordure épaisse, angles droits, ombre portée
+   * dure et décalée façon découpage papier. Au survol le bloc se rapproche de
+   * son ombre ; au clic il s'y colle complètement (retour tactile).
+   */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-card border-2 px-6 py-3
+      font-display text-sm font-bold uppercase tracking-widest
+      transition-all duration-150 ease-out;
+  }
+
+  .btn-primary {
+    @apply btn border-ink bg-accent-lime text-ink shadow-[5px_5px_0_0_#141414]
+      hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[7px_7px_0_0_#141414]
+      active:translate-x-0 active:translate-y-0 active:shadow-none;
+  }
+
+  .btn-outline {
+    @apply btn border-paper bg-transparent text-paper shadow-[5px_5px_0_0_rgba(247,246,235,0.4)]
+      hover:-translate-x-0.5 hover:-translate-y-0.5 hover:bg-paper hover:text-ink
+      hover:shadow-[7px_7px_0_0_rgba(247,246,235,0.4)]
+      active:translate-x-0 active:translate-y-0 active:shadow-none;
+  }
+
+  .btn-outline-ink {
+    @apply btn border-ink bg-transparent text-ink shadow-[5px_5px_0_0_rgba(20,20,20,0.25)]
+      hover:-translate-x-0.5 hover:-translate-y-0.5 hover:bg-ink hover:text-paper
+      hover:shadow-[7px_7px_0_0_rgba(20,20,20,0.25)]
+      active:translate-x-0 active:translate-y-0 active:shadow-none;
+  }
+
+  .tag {
+    @apply inline-block rounded-card border-2 border-current px-4 py-1.5 text-xs font-bold uppercase tracking-[0.14em];
+  }
+
+  .card-block {
+    @apply rounded-card border-2 border-current bg-ink-soft;
+  }
+
+  .input {
+    @apply rounded-card border-2 border-paper/30 bg-transparent px-4 py-2.5 text-sm normal-case
+      tracking-normal text-paper placeholder:text-paper/30 focus:border-paper focus:outline-none;
+  }
+
+  .container-content {
+    @apply mx-auto w-full max-w-content px-6 md:px-10;
+  }
+}
+
+/* Grain léger pour casser les aplats de couleur, comme sur beaucoup de sites "studio" */
+.grain {
+  position: relative;
+  isolation: isolate;
+}
+
+.grain::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.07;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/*
+ * Texte en contour seul, façon typo de poster en arrière-plan.
+ * `color` reste celui hérité/défini par une classe texte à côté (c'est lui
+ * qui donne sa couleur au contour via currentColor) : seul le remplissage du
+ * glyphe est rendu transparent, via -webkit-text-fill-color (propriété
+ * distincte de `color`). Mettre `color: transparent` directement ici rendrait
+ * aussi le contour transparent, puisque currentColor s'y résout pareil.
+ */
+.text-outline {
+  -webkit-text-stroke: 1.5px currentColor;
+  -webkit-text-fill-color: transparent;
+}
+
+/*
+ * Lettres animables au survol (voir BouncyText.vue) : la même courbe
+ * "back-out" (dépasse légèrement sa cible avant de se stabiliser) est
+ * utilisée à l'aller comme au retour, ce qui donne le petit rebond à la
+ * lettre quand elle redescend, façon note de musique.
+ */
+.bouncy-letter {
+  transition: transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.bouncy-letter:hover {
+  transform: translateY(-0.25em);
+}
