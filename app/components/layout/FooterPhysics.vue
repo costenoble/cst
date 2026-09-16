@@ -15,10 +15,10 @@ const ACCENTS: Product['accent'][] = ['pink', 'lime', 'blue', 'green', 'amber']
 // Tailles/positions/rotations dérivées de l'index (pas de Math.random) pour un
 // rendu déterministe, même si le composant n'est de toute façon monté que
 // côté client (ClientOnly dans TheFooter.vue).
-const shapes: Shape[] = Array.from({ length: 14 }, (_, i) => ({
+const shapes: Shape[] = Array.from({ length: 12 }, (_, i) => ({
   id: i,
   kind: i % 3 === 0 ? 'square' : 'circle',
-  size: 42 + ((i * 37) % 64),
+  size: 32 + ((i * 29) % 46),
   accent: ACCENTS[i % ACCENTS.length]!,
   startXPercent: (i * 71) % 100,
   startRotationDeg: (i * 53) % 360,
@@ -38,7 +38,7 @@ onMounted(async () => {
   if (!container) return
 
   const Matter = await import('matter-js')
-  const { Engine, World, Bodies, Runner, Mouse, MouseConstraint, Events } = Matter
+  const { Engine, World, Bodies, Body, Runner, Events } = Matter
 
   const width = container.clientWidth
   const height = container.clientHeight
@@ -53,7 +53,7 @@ onMounted(async () => {
 
   const bodies = shapes.map((shape) => {
     const x = (shape.startXPercent / 100) * width
-    const y = -160 - shape.id * 70
+    const y = -140 - shape.id * 60
     const options = {
       restitution: 0.5,
       friction: 0.35,
@@ -66,20 +66,6 @@ onMounted(async () => {
   })
 
   World.add(engine.world, [ground, leftWall, rightWall, ...bodies])
-
-  const mouse = Mouse.create(container)
-  mouse.pixelRatio = window.devicePixelRatio || 1
-  const mouseConstraint = MouseConstraint.create(engine, {
-    mouse,
-    constraint: { stiffness: 0.25, damping: 0.15, render: { visible: false } },
-  })
-  World.add(engine.world, mouseConstraint)
-
-  // Empêche Matter de capter la molette (sinon le scroll de la page se
-  // bloque dès que le curseur survole la zone des formes).
-  mouse.element.removeEventListener('mousewheel', mouse.mousewheel)
-  mouse.element.removeEventListener('DOMMouseScroll', mouse.mousewheel)
-  mouse.element.removeEventListener('wheel', mouse.mousewheel)
 
   function syncDom() {
     bodies.forEach((body, i) => {
@@ -123,10 +109,72 @@ onMounted(async () => {
   )
   observer.observe(container)
 
+  // Drag "à la main" plutôt que le module Mouse/MouseConstraint de Matter :
+  // ce dernier suppose un rendu sur <canvas> et mélange le ratio de pixels de
+  // l'écran (utile pour un canvas retina) avec nos coordonnées DOM en CSS
+  // pixels, ce qui décale la zone cliquable sur les écrans haute densité.
+  // Les PointerEvents natifs restent toujours en CSS pixels, donc l'offset
+  // colle exactement à ce qu'on affiche.
+  const pointerListeners: Array<() => void> = []
+
+  bodies.forEach((body, i) => {
+    const el = shapeEls[i]
+    if (!el) return
+
+    let activePointerId: number | null = null
+    let grabDx = 0
+    let grabDy = 0
+
+    function toContainerPoint(event: PointerEvent) {
+      const rect = container!.getBoundingClientRect()
+      return { x: event.clientX - rect.left, y: event.clientY - rect.top }
+    }
+
+    function onPointerDown(event: PointerEvent) {
+      event.preventDefault()
+      activePointerId = event.pointerId
+      el!.setPointerCapture(event.pointerId)
+      const point = toContainerPoint(event)
+      grabDx = point.x - body.position.x
+      grabDy = point.y - body.position.y
+      Body.setStatic(body, true)
+    }
+
+    function onPointerMove(event: PointerEvent) {
+      if (activePointerId !== event.pointerId) return
+      const point = toContainerPoint(event)
+      const targetX = point.x - grabDx
+      const targetY = point.y - grabDy
+      const velocity = { x: targetX - body.position.x, y: targetY - body.position.y }
+      Body.setPosition(body, { x: targetX, y: targetY })
+      Body.setVelocity(body, velocity)
+    }
+
+    function onPointerEnd(event: PointerEvent) {
+      if (activePointerId !== event.pointerId) return
+      activePointerId = null
+      if (el!.hasPointerCapture(event.pointerId)) el!.releasePointerCapture(event.pointerId)
+      Body.setStatic(body, false)
+    }
+
+    el.addEventListener('pointerdown', onPointerDown)
+    el.addEventListener('pointermove', onPointerMove)
+    el.addEventListener('pointerup', onPointerEnd)
+    el.addEventListener('pointercancel', onPointerEnd)
+
+    pointerListeners.push(() => {
+      el.removeEventListener('pointerdown', onPointerDown)
+      el.removeEventListener('pointermove', onPointerMove)
+      el.removeEventListener('pointerup', onPointerEnd)
+      el.removeEventListener('pointercancel', onPointerEnd)
+    })
+  })
+
   cleanup = () => {
     observer.disconnect()
     stop()
     Events.off(engine, 'afterUpdate', syncDom)
+    pointerListeners.forEach((remove) => remove())
     World.clear(engine.world, false)
     Engine.clear(engine)
   }
@@ -136,10 +184,7 @@ onBeforeUnmount(() => cleanup?.())
 </script>
 
 <template>
-  <div
-    ref="containerRef"
-    class="relative h-72 overflow-hidden border-b-2 border-paper/15 bg-ink sm:h-80 md:h-96"
-  >
+  <div ref="containerRef" class="relative h-40 overflow-hidden border-t-2 border-paper/15 bg-ink sm:h-48 md:h-56">
     <p
       class="pointer-events-none absolute left-4 top-4 z-10 text-[10px] font-bold uppercase tracking-[0.2em] text-paper/30 sm:left-6 sm:top-6"
     >
